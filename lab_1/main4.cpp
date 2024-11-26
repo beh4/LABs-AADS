@@ -1,124 +1,133 @@
 #include <iostream>
+#include <stdexcept>
 
 // Структура для узла двусвязного циклического списка
+template<typename T>
 struct Node {
-    int data;
-    Node* next;
+    T data;
     Node* prev;
-
-    Node(int value) : data(value), next(this), prev(this) {}
+    Node* next;
+    
+    Node(T val) : data(val), prev(this), next(this) {}
 };
 
-// Функция для добавления узла в конец списка
-void append(Node*& head, int data) {
-    Node* newNode = new Node(data);
-    if (!head) {
-        head = newNode;
-        return;
-    }
-    Node* tail = head->prev;
-    tail->next = newNode;
-    newNode->prev = tail;
-    newNode->next = head;
-    head->prev = newNode;
-}
+// Класс для двусвязного циклического списка
+template<typename T>
+class LinkedList {
+public:
+    Node<T>* head;
 
-// Функция для вывода числа, представленного списком
-void printList(Node* head) {
-    if (!head) return;
-    Node* temp = head;
-    do {
-        std::cout << temp->data;
-        temp = temp->next;
-    } while (temp != head);
-    std::cout << std::endl;
-}
+    LinkedList() : head(nullptr) {}
 
-// Функция для сложения двух чисел, представленных списками
-Node* addNumbers(Node* num1, Node* num2) {
-    Node *result = nullptr, *tail1 = num1->prev, *tail2 = num2->prev;
-    int carry = 0;
-    do {
-        int sum = tail1->data + tail2->data + carry;
-        carry = sum / 10;
-        append(result, sum % 10);
-        tail1 = tail1->prev;
-        tail2 = tail2->prev;
-    } while (tail1 != num1->prev && tail2 != num2->prev);
-    // Если какие-то числа закончились, но всё ещё есть перенос
-    while (tail1 != num1->prev) {
-        int sum = tail1->data + carry;
-        carry = sum / 10;
-        append(result, sum % 10);
-        tail1 = tail1->prev;
-    }
-    while (tail2 != num2->prev) {
-        int sum = tail2->data + carry;
-        carry = sum / 10;
-        append(result, sum % 10);
-        tail2 = tail2->prev;
-    }
-    if (carry > 0) {
-        append(result, carry);
-    }
-    return result;
-}
-
-// Функция для умножения двух чисел, представленных списками
-Node* multiplyNumbers(Node* num1, Node* num2) {
-    Node* result = nullptr;
-    Node* tail2 = num2->prev;
-    int shift = 0;
-
-    do {
-        Node* product(nullptr);
-        int carry = 0;
-        for (Node* tail1 = num1->prev; tail1 != num1; tail1 = tail1->prev) {
-            int mul = tail1->data * tail2->data + carry;
-            carry = mul / 10;
-            append(product, mul % 10);
+    ~LinkedList() {
+        if (head) {
+            Node<T>* current = head->next;
+            while (current != head) {
+                Node<T>* temp = current;
+                current = current->next;
+                delete temp;
+            }
+            delete head;
         }
-        if (carry > 0) {
-            append(product, carry);
-        }
-        for (int i = 0; i < shift; ++i) {
-            append(product, 0);
-        }
-        if (!result) {
-            result = product;
+    }
+
+    // Добавление элемента в конец списка
+    void append(T val) {
+        if (!head) {
+            head = new Node<T>(val);
         } else {
-            result = addNumbers(result, product);
+            Node<T>* tail = head->prev;
+            Node<T>* newNode = new Node<T>(val);
+            tail->next = newNode;
+            newNode->prev = tail;
+            newNode->next = head;
+            head->prev = newNode;
         }
-        tail2 = tail2->prev;
-        ++shift;
-    } while (tail2 != num2->prev);
+    }
+
+    // Вывод списка (число) в обратном порядке в виде строки
+    friend std::ostream& operator<<(std::ostream& os, const LinkedList<T>& list) {
+        if (!list.head) return os << "0";
+        Node<T>* current = list.head->prev;
+        do {
+            os << current->data;
+            current = current->prev;
+        } while (current != list.head->prev);
+        return os;
+    }
+};
+
+// Функция для сложения двух чисел, представленных в виде списков
+template<typename T>
+LinkedList<T> add(const LinkedList<T>& num1, const LinkedList<T>& num2) {
+    LinkedList<T> result;
+    Node<T>* p1 = num1.head;
+    Node<T>* p2 = num2.head;
+    T carry = 0;
+
+    if (p1 == nullptr) return num2;
+    if (p2 == nullptr) return num1;
+
+    do {
+        T val1 = p1 ? p1->data : 0;
+        T val2 = p2 ? p2->data : 0;
+        T sum = val1 + val2 + carry;
+        carry = sum / 10;
+        result.append(sum % 10);
+        
+        if (p1) p1 = (p1->next == num1.head) ? nullptr : p1->next;
+        if (p2) p2 = (p2->next == num2.head) ? nullptr : p2->next;
+    } while (p1 || p2 || carry != 0);
 
     return result;
 }
 
-// Тестовая функция
+// Функция для умножения двух чисел, представленных в виде списков
+template<typename T>
+LinkedList<T> multiply(const LinkedList<T>& num1, const LinkedList<T>& num2) {
+    LinkedList<T> result;
+    if (!num1.head || !num2.head) return result;
+    
+    int num1_pos = 0;
+    for (Node<T>* p1 = num1.head; p1 != nullptr; p1 = (p1->next == num1.head) ? nullptr : p1->next) {
+        LinkedList<T> temp;
+        T carry = 0;
+        
+        // Заполнение нулями в начале temp равное позиции узла p1
+        for (int i = 0; i < num1_pos; ++i) temp.append(0);
+
+        int num2_pos = 0;
+        for (Node<T>* p2 = num2.head; p2 != nullptr; p2 = (p2->next == num2.head) ? nullptr : p2->next, ++num2_pos) {
+            T product = p1->data * p2->data + carry;
+            carry = product / 10;
+            temp.append(product % 10);
+        }
+        
+        if (carry) temp.append(carry);
+
+        result = add(result, temp);
+        ++num1_pos;
+    }
+    return result;
+}
+
+// Пример использования
 int main() {
-    // Создание первого числа
-    Node* num1 = nullptr;
-    append(num1, 3);
-    append(num1, 2);
-    append(num1, 1);  // 123
+    LinkedList<int> num1;
+    num1.append(3);
+    num1.append(4);
+    num1.append(2); // представляет число 243
 
-    // Создание второго числа
-    Node* num2 = nullptr;
-    append(num2, 6);
-    append(num2, 5);
-    append(num2, 4);  // 456
+    LinkedList<int> num2;
+    num2.append(4);
+    num2.append(6);
+    num2.append(5); // представляет число 564
 
-    // Сложение чисел
-    Node* sum = addNumbers(num1, num2);
-    std::cout << "Сумма: ";
-    printList(sum);
+    LinkedList<int> sum = add(num1, num2);
+    LinkedList<int> product = multiply(num1, num2);
 
-    // Умножение чисел
-    Node* product = multiplyNumbers(num1, num2);
-    std::cout << "Произведение: ";
-    printList(product);
+    std::cout << "Сумма: " << sum << std::endl; // ожидаемый вывод: 807
+    std::cout << "Произведение: " << product << std::endl; // ожидаемый вывод: 137052
 
     return 0;
 }
