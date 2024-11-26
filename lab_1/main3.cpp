@@ -1,35 +1,22 @@
 #include <iostream>
-#include <stdexcept>
 
 template<typename T>
 struct Node {
     T data;
     Node* next;
     Node* prev;
-
     Node(const T& value) : data(value), next(nullptr), prev(nullptr) {}
 };
 
 template<typename T>
 class LinkedList {
-private:
+public:
     Node<T>* head;
     Node<T>* tail;
 
-public:
     LinkedList() : head(nullptr), tail(nullptr) {}
 
-    LinkedList(const T* number, size_t length) {
-        for (size_t i = 0; i < length; ++i) {
-            push_tail(number[i]);
-        }
-    }
-
-    ~LinkedList() {
-        clear();
-    }
-
-    void push_tail(T value) {
+    void push_tail(const T& value) {
         Node<T>* newNode = new Node<T>(value);
         if (!head) {
             head = newNode;
@@ -37,23 +24,12 @@ public:
             head->next = head;
             head->prev = head;
         } else {
+            tail->next = newNode;
             newNode->prev = tail;
             newNode->next = head;
-            tail->next = newNode;
             head->prev = newNode;
             tail = newNode;
         }
-    }
-
-    void clear() {
-        if (!head) return;
-        Node<T>* current = head;
-        do {
-            Node<T>* toDelete = current;
-            current = current->next;
-            delete toDelete;
-        } while (current != head);
-        head = tail = nullptr;
     }
 
     void print() const {
@@ -68,106 +44,118 @@ public:
         } while (current != head);
     }
 
-    Node<T>* get_head() const {
-        return head;
-    }
-
-    Node<T>* get_tail() const {
-        return tail;
-    }
-
-    bool is_empty() const {
-        return head == nullptr;
+    // Деструктор для освобождения памяти
+    ~LinkedList() {
+        if (head) {
+            Node<T>* current = head;
+            do {
+                Node<T>* toDelete = current;
+                current = current->next;
+                delete toDelete;
+            } while (current != head);
+        }
     }
 };
 
-LinkedList<int> add(LinkedList<int>& num1, LinkedList<int>& num2) {
+// Функция для сложения двух двусвязныхциклических списков
+LinkedList<int> addLists(const LinkedList<int>& a, const LinkedList<int>& b) {
     LinkedList<int> result;
-    Node<int>* p1 = num1.get_tail();
-    Node<int>* p2 = num2.get_tail();
+    Node<int>* nodeA = a.head;
+    Node<int>* nodeB = b.head;
 
     int carry = 0;
 
+    // Дополним списки нулями до одной длины
     do {
-        int sum = (p1->data + p2->data + carry);
-        result.push_tail(sum % 10);
-        carry = sum / 10;
-
-        p1 = (p1 == num1.get_head()) ? num1.get_tail() : p1->prev;
-        p2 = (p2 == num2.get_head()) ? num2.get_tail() : p2->prev;
-    } while (p1 != num1.get_tail() || p2 != num2.get_tail() || carry != 0);
+        int sum = carry;
+        if (nodeA) {
+            sum += nodeA->data;
+            nodeA = nodeA->next;
+        }
+        if (nodeB) {
+            sum += nodeB->data;
+            nodeB = nodeB->next;
+        }
+        carry = sum / 10; // перенос
+        result.push_tail(sum % 10); // добавляем младший разряд
+    } while (nodeA != a.head || nodeB != b.head || carry != 0);
 
     return result;
 }
 
-LinkedList<int> multiply(LinkedList<int>& num1, LinkedList<int>& num2) {
-    if (num1.is_empty() || num2.is_empty()) {
-        return LinkedList<int>(new int[1]{0}, 1); // Zero result
-    }
-
+// Функция для умножения двух двусвязных циклических списков
+LinkedList<int> multiplyLists(const LinkedList<int>& a, const LinkedList<int>& b) {
     LinkedList<int> result;
-    Node<int>* p1 = num1.get_tail();
-    int num2_length = 0;
 
-    // First, we count the number of digits in num2
-    Node<int>* temp = num2.get_tail();
+    Node<int>* nodeB = b.head;
+    int bIndex = 0;
+
+    // Умножаем каждый цвет из второго списка на первый и сдвигаем
     do {
-        num2_length++;
-        temp = (temp == num2.get_head()) ? num2.get_tail() : temp->prev;
-    } while (temp != num2.get_tail());
-
-    // Array to store intermediate results based on multipliers
-    int* tempResult = new int[num2_length + 1](); // +1 for carry
-
-    int position = 0;
-    do {
+        LinkedList<int> tempResult;
+        Node<int>* nodeA = a.head;
         int carry = 0;
-        Node<int>* p2 = num2.get_tail();
-        for (int i = 0; i < position; ++i) {
-            tempResult[i] = 0; // Press the carry for the next digit
-        }
 
+        // Умножаем текущую цифру b на все цифры a
         do {
-            int product = (p1->data * p2->data + carry);
-            tempResult[position] += product % 10;
+            int product = (nodeA->data * nodeB->data) + carry;
             carry = product / 10;
-
-            p2 = (p2 == num2.get_head()) ? num2.get_tail() : p2->prev;
-            position++;
-        } while (p2 != num2.get_tail());
-
-        tempResult[position] += carry;
+            tempResult.push_tail(product % 10);
+            nodeA = nodeA->next;
+        } while (nodeA != a.head);
         
-        // Now push to result from tempResult
-        for (int i = 0; i < num2_length; ++i) {
-            result.push_tail(tempResult[i]);
+        // Если остался перенос из последнего умножения, добавляем его
+        if (carry > 0) {
+            tempResult.push_tail(carry);
+        }
+
+        // Сдвигаем временный результат влево
+        for (int i = 0; i < bIndex; ++i) {
+            tempResult.push_tail(0);
         }
         
-        position++;
-        p1 = (p1 == num1.get_head()) ? num1.get_tail() : p1->prev;
-    } while (p1 != num1.get_tail());
+        // Добавляем временный результат к окончательному результату
+        result = addLists(result, tempResult);
 
-    delete[] tempResult;
+        nodeB = nodeB->next;
+        bIndex++;
+    } while (nodeB != b.head);
 
-    // The final result may require adjustment (to handle carries properly)
     return result;
 }
 
-// Оператор вывода для LinkedList
+// Оператор вывода для двусвязного списка
 std::ostream& operator<<(std::ostream& os, const LinkedList<int>& list) {
     list.print();
     return os;
 }
 
+// Пример использования
 int main() {
-    LinkedList<int> num1(new int[3]{2, 1, 3}, 3); // 213
-    LinkedList<int> num2(new int[3]{3, 4, 5}, 3); // 345
+    LinkedList<int> num1;
+    LinkedList<int> num2;
 
-    LinkedList<int> sum = add(num1, num2);
-    LinkedList<int> product = multiply(num1, num2);
+    // Пример: число 123456
+    num1.push_tail(6);
+    num1.push_tail(5);
+    num1.push_tail(4);
+    num1.push_tail(3);
+    num1.push_tail(2);
+    num1.push_tail(1);
 
-    std::cout << "Sum: " << sum << std::endl;        // Ожидаем 558
-    std::cout << "Product: " << product << std::endl; // Ожидаем 73395
+    // Пример: число 789
+    num2.push_tail(9);
+    num2.push_tail(8);
+    num2.push_tail(7);
+
+    std::cout << "Number 1: " << num1 << std::endl;
+    std::cout << "Number 2: " << num2 << std::endl;
+
+    LinkedList<int> sum = addLists(num1, num2);
+    LinkedList<int> product = multiplyLists(num1, num2);
+
+    std::cout << "Sum: " << sum << std::endl;
+    std::cout << "Product: " << product << std::endl;
 
     return 0;
 }
