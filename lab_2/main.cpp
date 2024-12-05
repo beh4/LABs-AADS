@@ -4,9 +4,6 @@
 #include <ctime>
 
 template<typename T>
-class LinkedList;
-
-template<typename T>
 struct Node {
     T data;
     Node* next;
@@ -22,13 +19,14 @@ private:
     Node<T>* tail;
 
     void clear() {
-        if (!head) return;
-        Node<T>* current = head;
-        do {
-            Node<T>* toDelete = current;
-            current = current->next;
-            delete toDelete;
-        } while (current != head);
+        if (head) {
+            Node<T>* current = head;
+            do {
+                Node<T>* toDelete = current;
+                current = current->next;
+                delete toDelete;
+            } while (current != head);
+        }
         head = tail = nullptr;
     }
 
@@ -93,16 +91,6 @@ public:
         }
     }
 
-    void push_tail(const LinkedList<T>& other) {
-        if (other.head) {
-            Node<T>* current = other.head;
-            do {
-                push_tail(current->data);
-                current = current->next;
-            } while (current != other.head);
-        }
-    }
-
     void push_head(const T& value) {
         Node<T>* newNode = new Node<T>(value);
         if (!head) {
@@ -115,16 +103,6 @@ public:
             tail->next = newNode;
             head->prev = newNode;
             head = newNode;
-        }
-    }
-
-    void push_head(const LinkedList<T>& other) {
-        if (!head){
-            Node<T>* current = other.tail;
-            do {
-                push_head(current->data);
-                current = current->prev;
-            } while (current != other.tail);
         }
     }
 
@@ -158,6 +136,26 @@ public:
         }
     }
 
+    void push_tail(const LinkedList<T>& other) {
+        if (other.head) {
+            Node<T>* current = other.head;
+            do {
+                push_tail(current->data);
+                current = current->next;
+            } while (current != other.head);
+        }
+    }
+
+    void push_head(const LinkedList<T>& other) {
+        if (other.head) {
+            Node<T>* current = other.tail;
+            do {
+                push_head(current->data);
+                current = current->prev;
+            } while (current != other.tail);
+        }
+    }
+
     void delete_node(const T& value) {
         if (!head) return;
         Node<T>* current = head;
@@ -185,6 +183,7 @@ public:
         } while (current != head && current != nullptr);
     }
 
+
     T& operator[](size_t index) {
         if (index < 0 || !head) throw std::out_of_range("Out of index");
         Node<T>* current = head;
@@ -201,14 +200,16 @@ public:
         return const_cast<const T&>(operator[](index));
     }
 
-    void print() const {
-        if (!head) return;
-        Node<T>* current = head;
+    friend std::ostream& operator<<(std::ostream& os, const LinkedList<T>& list) {
+        if (!list.head) {
+            return os;
+        }
+        Node<T>* current = list.head;
         do {
-            std::cout << current->data << " ";
+            os << current->data << " ";
             current = current->next;
-        } while (current != head);
-        std::cout << std::endl;
+        } while (current != list.head);
+        return os;
     }
 
     void reverse() {
@@ -222,7 +223,6 @@ public:
             temp = current->prev;
             current->prev = current->next;
             current->next = temp;
-
             current = current->prev;
         } while (current != head);
 
@@ -285,7 +285,6 @@ LinkedList<int> mult(const LinkedList<int>& num1, const LinkedList<int>& num2) {
         }
     }
     result.reverse();
-
     return result;
 }
 
@@ -294,45 +293,49 @@ int main() {
     list1.push_tail(1);
     list1.push_tail(2);
     list1.push_tail(3);
-    list1.print();
 
     LinkedList<int> list2(5, 42);
-    list2.print();
+    std::cout << list2 << std::endl;
 
     LinkedList<int> list3 = list2;
-    list3.print();
+    std::cout << list3 << std::endl;
 
     list1.push_head(0);
-    list1.print();
+    std::cout << list1 << std::endl;
 
     list1.pop_tail();
-    list1.print();
+    std::cout << list1 << std::endl;
 
     list1.delete_node(2);
-    list1.print();
+    std::cout << list1 << std::endl;
 
-    list1.push_head(list3);
     list1.push_tail(list2);
-    list1.print();
+    std::cout << list1 << std::endl;
+    list1.push_head(list2);
+    std::cout << list1 << std::endl;
+
     try {
         std::cout << "Element 1: " << list1[1] << std::endl;
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
+
     LinkedList<int> list4;
     list4.push_tail(4);
     list4.push_tail(3);
-    list4.print();
+    std::cout << list4 << std::endl;
+
     LinkedList<int> list5;
     list5.push_tail(2);
     list5.push_tail(1);
-    list5.print();
+    std::cout << list5 << std::endl;
 
     LinkedList<int> sum = add(list4, list5);
     LinkedList<int> product = mult(list4, list5);
 
-    sum.print();
-    product.print();
+    std::cout << sum << std::endl;
+    std::cout << product << std::endl;
+
     return 0;
 }
