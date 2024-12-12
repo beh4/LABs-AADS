@@ -1,0 +1,127 @@
+#include <iostream>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
+
+struct stats {
+    size_t comparison_count = 0;
+    size_t copy_count = 0;
+};
+
+stats selection_sort(std::vector<int>& arr) { //Всегда O(n^2)
+    stats s;
+    size_t n = arr.size();
+    for (size_t i = 0; i < n - 1; ++i) {
+        size_t min_index = i;
+        for (size_t j = i + 1; j < n; ++j) {
+            s.comparison_count++;
+            if (arr[j] < arr[min_index]) {
+                min_index = j;
+            }
+        }
+        std::swap(arr[i], arr[min_index]);
+        s.copy_count += 3;
+    }
+    return s;
+}
+
+stats comb_sort(std::vector<int>& arr) { //В лучшем O(nlogn), В худшем O(n^2)
+    stats s;
+    size_t n = arr.size();
+    size_t gap = n;
+    bool swapped = true;
+    while (gap > 1 || swapped) {
+        gap = gap * 10 / 13;
+        if (gap < 1) gap = 1;
+        swapped = false;
+
+        for (size_t i = 0; i + gap < n; i++) {
+            s.comparison_count++;
+            if (arr[i] > arr[i + gap]) {
+                std::swap(arr[i], arr[i + gap]);
+                s.copy_count += 3;
+                swapped = true;
+            }
+        }
+    }
+    return s;
+}
+
+void merge(std::vector<int>& arr, int left, int mid, int right, stats& s) { //Всегда O(nlogn)
+    std::vector<int> left_part(arr.begin() + left, arr.begin() + mid + 1);
+    std::vector<int> right_part(arr.begin() + mid + 1, arr.begin() + right + 1);
+
+    size_t i = 0, j = 0, k = left;
+    while (i < left_part.size() && j < right_part.size()) {
+        s.comparison_count++;
+        if (left_part[i] <= right_part[j]) {
+            arr[k++] = left_part[i++];
+            s.copy_count++;
+        }
+        else {
+            arr[k++] = right_part[j++];
+            s.copy_count++;
+        }
+    }
+    while (i < left_part.size()) {
+        arr[k++] = left_part[i++];
+        s.copy_count++;
+    }
+    while (j < right_part.size()) {
+        arr[k++] = right_part[j++];
+        s.copy_count++;
+    }
+}
+
+void natural_two_way_merge_sort(std::vector<int>& arr, int left, int right, stats& s) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+        natural_two_way_merge_sort(arr, left, mid, s);
+        natural_two_way_merge_sort(arr, mid + 1, right, s);
+        merge(arr, left, mid, right, s);
+    }
+}
+
+int main() {
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    std::vector<int> random_array(10000);
+    for (size_t i = 0; i < random_array.size(); ++i) {
+        random_array[i] = std::rand() % 10000;
+    }
+    /*for (const auto& num : random_array) {
+        std::cout << num << " ";
+    }*/
+    stats selection_stats = selection_sort(random_array);
+    std::cout << "Selection sort: " << "Comparisons = " << selection_stats.comparison_count
+        << ", Copies = " << selection_stats.copy_count << std::endl;
+
+    random_array = std::vector<int>(10000);
+    for (size_t i = 0; i < random_array.size(); ++i) {
+        random_array[i] = std::rand() % 10000;
+    }
+
+    stats comb_stats = comb_sort(random_array);
+    std::cout << "Comb sort: " << "Comparisons = " << comb_stats.comparison_count
+        << ", Copies = " << comb_stats.copy_count << std::endl;
+
+    random_array = std::vector<int>(10000);
+    for (size_t i = 0; i < random_array.size(); ++i) {
+        random_array[i] = std::rand() % 10000;
+    }
+
+    stats merge_stats;
+    natural_two_way_merge_sort(random_array, 0, random_array.size() - 1, merge_stats);
+    std::cout << "Natural two-way merge: " << "Comparisons = " << merge_stats.comparison_count
+        << ", Copies = " << merge_stats.copy_count << std::endl;
+
+    return 0;
+
+
+    /*for (size_t i = 0; i <= random_array.size() - 1; ++i) {
+        random_array[i] = i;
+    }*/
+    //for (size_t i = 0; i <= 1000; ++i) {
+    //    random_array[i] = i;
+    //}
+}
